@@ -55,7 +55,8 @@ class DomainSearch(Action):
 
         domain = arguments.get("domain")
         if not domain:
-            raise ValueError("Missing required argument: domain")
+            self.error("Missing required argument: domain")
+            return {"count": 0, "results": []}
 
         payload: Dict[str, Any] = {
             "context": arguments.get("context") or "demo",

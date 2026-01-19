@@ -1,42 +1,49 @@
 {
-  "uuid": "2c55bf7a-2a45-4c9c-9b41-0c13dd7fa2e7",
-  "name": "Domain Search",
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Arguments",
+    "type": "object",
+    "properties": {
+      "context": {
+        "description": "Search context (e.g. demo).",
+        "type": "string",
+        "default": "demo"
+      },
+      "domain": {
+        "description": "Domain name to search (e.g. chu-rennes.fr).",
+        "type": "string"
+      },
+      "start_date": {
+        "description": "Start date (ISO 8601 UTC).",
+        "type": "string"
+      },
+      "end_date": {
+        "description": "End date (ISO 8601 UTC).",
+        "type": "string"
+      }
+    },
+    "required": ["domain"]
+  },
   "description": "Launch a search for leaks based on a domain (Anozrway).",
   "docker_parameters": "domain_search",
-  "arguments": {
-    "context": {
-      "description": "Search context (e.g. demo).",
-      "type": "string",
-      "required": false,
-      "default": "demo"
-    },
-    "domain": {
-      "description": "Domain name to search (e.g. chu-rennes.fr).",
-      "type": "string",
-      "required": true
-    },
-    "start_date": {
-      "description": "Start date (ISO 8601 UTC).",
-      "type": "string",
-      "required": false
-    },
-    "end_date": {
-      "description": "End date (ISO 8601 UTC).",
-      "type": "string",
-      "required": false
-    }
-  },
+  "name": "Domain Search",
   "results": {
-    "count": {
-      "description": "Number of results returned by the API.",
-      "type": "integer",
-      "required": true
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Results",
+    "type": "object",
+    "properties": {
+      "count": {
+        "description": "Number of results returned by the API.",
+        "type": "integer"
+      },
+      "results": {
+        "description": "List of leaks associated with the domain.",
+        "type": "array",
+        "items": { "type": "object" }
+      }
     },
-    "results": {
-      "description": "List of leaks associated with the domain.",
-      "type": "array",
-      "required": true,
-      "items": { "type": "object" }
-    }
-  }
+    "required": ["count", "results"]
+  },
+  "uuid": "2c55bf7a-2a45-4c9c-9b41-0c13dd7fa2e7",
+  "slug": "domain_search"
 }
