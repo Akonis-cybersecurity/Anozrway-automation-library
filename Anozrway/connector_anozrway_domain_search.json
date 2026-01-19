@@ -1,0 +1,49 @@
+{
+  "uuid": "cfd9a9b0-84b6-4a54-8e59-8d1b5b57d122",
+  "name": "Collect leaks from Anozrway (domain searches)",
+  "description": "Periodically query Anozrway domain searches and store results locally (intake later).",
+  "docker_parameters": "anozrway_domain_search",
+  "arguments": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "title": "Anozrway Domain Search Configuration",
+    "properties": {
+      "frequency": {
+        "type": "integer",
+        "description": "Polling interval in seconds",
+        "default": 600,
+        "minimum": 60
+      },
+      "chunk_size": {
+        "type": "integer",
+        "description": "Maximum chunk size for batch processing",
+        "default": 500,
+        "minimum": 1
+      },
+      "context": {
+        "type": "string",
+        "description": "Anozrway search context",
+        "default": "demo"
+      },
+      "domains": {
+        "type": "array",
+        "description": "List of domains to monitor",
+        "items": { "type": "string" },
+        "minItems": 1
+      },
+      "lookback_hours_on_first_run": {
+        "type": "integer",
+        "description": "On first run (no checkpoint), how many hours to look back",
+        "default": 24,
+        "minimum": 1,
+        "maximum": 168
+      },
+      "output_file": {
+        "type": "string",
+        "description": "Local output file (relative to connector data path)",
+        "default": "anozrway_results.jsonl"
+      }
+    },
+    "required": ["domains"]
+  }
+}

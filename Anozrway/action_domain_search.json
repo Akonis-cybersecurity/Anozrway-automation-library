@@ -1,0 +1,47 @@
+{
+  "name": "Domain Search",
+  "description": "Launch a search for leaks based on a domain (Anozrway).",
+  "uuid": "2c55bf7a-2a45-4c9c-9b41-0c13dd7fa2e7",
+  "docker_parameters": {
+    "image": "anozrway",
+    "command": "anozrway_modules.domain_search.DomainSearch"
+  },
+  "arguments": {
+    "context": {
+      "description": "Search context (e.g. demo).",
+      "type": "string",
+      "required": true,
+      "default": "demo"
+    },
+    "domain": {
+      "description": "Domain name to search (e.g. chu-rennes.fr).",
+      "type": "string",
+      "required": true
+    },
+    "start_date": {
+      "description": "Start date (ISO 8601 UTC).",
+      "type": "string",
+      "required": false
+    },
+    "end_date": {
+      "description": "End date (ISO 8601 UTC).",
+      "type": "string",
+      "required": false
+    }
+  },
+  "results": {
+    "count": {
+      "description": "Number of results returned by the API.",
+      "type": "integer",
+      "required": true
+    },
+    "results": {
+      "description": "List of leaks associated with the domain.",
+      "type": "array",
+      "required": true,
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

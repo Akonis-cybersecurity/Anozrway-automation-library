@@ -1,0 +1,8 @@
+{
+  "intake_server": "https://intake.sekoia.io",
+  "intake_key": "kLEuDnRr85AFVJMS84ENRKyPD9223Pi1",
+  "frequency": 600,
+  "chunk_size": 50,
+  "context": "demo",
+  "domains": ["chu-rennes.fr"]
+}
