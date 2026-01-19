@@ -1,11 +1,8 @@
 {
+  "uuid": "2c55bf7a-2a45-4c9c-9b41-0c13dd7fa2e7",
   "name": "Domain Search",
   "description": "Launch a search for leaks based on a domain (Anozrway).",
-  "uuid": "2c55bf7a-2a45-4c9c-9b41-0c13dd7fa2e7",
-  "docker_parameters": {
-    "image": "anozrway",
-    "command": "anozrway_modules.domain_search.DomainSearch"
-  },
+  "docker_parameters": "domain_search",
   "arguments": {
     "context": {
       "description": "Search context (e.g. demo).",
@@ -39,9 +36,7 @@
       "description": "List of leaks associated with the domain.",
       "type": "array",
       "required": true,
-      "items": {
-        "type": "object"
-      }
+      "items": { "type": "object" }
     }
   }
 }
