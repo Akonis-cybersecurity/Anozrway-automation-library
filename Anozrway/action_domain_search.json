@@ -7,7 +7,7 @@
     "context": {
       "description": "Search context (e.g. demo).",
       "type": "string",
-      "required": true,
+      "required": false,
       "default": "demo"
     },
     "domain": {

@@ -53,9 +53,13 @@ class DomainSearch(Action):
             timeout=timeout,
         ).get_token()
 
+        domain = arguments.get("domain")
+        if not domain:
+            raise ValueError("Missing required argument: domain")
+
         payload: Dict[str, Any] = {
-            "context": arguments["context"],
-            "domain": arguments["domain"],
+            "context": arguments.get("context") or "demo",
+            "domain": domain,
         }
         if arguments.get("start_date"):
             payload["start_date"] = arguments["start_date"]
@@ -76,7 +80,4 @@ class DomainSearch(Action):
         data = r.json()
 
         results: List[Dict[str, Any]] = data.get("results") or []
-        return {
-            "count": len(results),
-            "results": results,
-        }
+        return {"count": len(results), "results": results}
