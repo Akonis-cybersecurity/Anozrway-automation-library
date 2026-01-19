@@ -1,0 +1,15 @@
+{
+  "configuration": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Anozrway",
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "description": "Module for Anozrway",
+  "name": "Anozrway",
+  "slug": "anozrway",
+  "categories": [],
+  "uuid": "6d752e61-4934-4795-936b-f0cc68e828e9",
+  "version": "0.1.0"
+}
