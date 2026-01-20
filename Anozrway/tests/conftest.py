@@ -6,7 +6,7 @@ from sekoia_automation import constants
 
 
 @pytest.fixture
-def data_storage():
+def symphony_storage():
     original_storage = constants.DATA_STORAGE
     constants.DATA_STORAGE = mkdtemp()
 
@@ -14,3 +14,8 @@ def data_storage():
 
     rmtree(constants.DATA_STORAGE)
     constants.DATA_STORAGE = original_storage
+
+
+@pytest.fixture
+def data_storage(symphony_storage):
+    yield symphony_storage

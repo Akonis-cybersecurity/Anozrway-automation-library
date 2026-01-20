@@ -23,6 +23,11 @@
         "description": "Anozrway OAuth2 Client Secret",
         "secret": true
       },
+      "anozrway_x_restrict_access_token": {
+        "type": "string",
+        "description": "Anozrway additional authorization token (x-restrict-access header)",
+        "secret": true
+      },
       "timeout_seconds": {
         "type": "integer",
         "description": "HTTP timeout in seconds",
@@ -32,12 +37,12 @@
       }
     },
     "required": ["anozrway_client_id", "anozrway_client_secret"],
-    "secrets": ["anozrway_client_secret"]
+    "secrets": ["anozrway_client_secret", "anozrway_x_restrict_access_token"]
   },
   "description": "Anozrway provides domain-based breach and leak intelligence through a secured API.",
   "name": "Anozrway",
   "slug": "anozrway",
   "uuid": "a07647cb-d88b-4c62-9012-72d5e50d26d2",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "categories": ["Threat Intelligence"]
 }

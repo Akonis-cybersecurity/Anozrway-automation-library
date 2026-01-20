@@ -1,100 +1,167 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import asyncio
+import aiohttp
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
-import aiohttp
+from aiolimiter import AsyncLimiter
 
+from sekoia_automation.trigger import Trigger
 
-@dataclass
-class AnozrwayCredentials:
-    client_id: str
-    client_secret: str
-    token_url: str
-    base_url: str
+from anozrway_modules.client.errors import AnozrwayAuthError, AnozrwayError, AnozrwayRateLimitError
 
 
 class AnozrwayClient:
-    def __init__(self, credentials: AnozrwayCredentials, timeout_seconds: int = 30):
-        self.creds = credentials
-        self.timeout = aiohttp.ClientTimeout(total=timeout_seconds)
+    def __init__(self, module_config: Dict[str, Any], trigger: Optional[Trigger] = None):
+        self.cfg = module_config
+        self.trigger = trigger
+
+        self.base_url = str(self.cfg.get("anozrway_base_url", "https://balise.anozrway.com")).rstrip("/")
+        self.token_url = str(self.cfg.get("anozrway_token_url", "https://auth.anozrway.com/oauth2/token"))
+        self.client_id = self.cfg.get("anozrway_client_id")
+        self.client_secret = self.cfg.get("anozrway_client_secret")
+        self.x_restrict_access = self.cfg.get("anozrway_x_restrict_access_token")  # may be None for now
+        self.timeout = int(self.cfg.get("timeout_seconds", 30))
+
         self._session: Optional[aiohttp.ClientSession] = None
-        self._token: Optional[str] = None
+        self._access_token: Optional[str] = None
+        self._token_expires_at: Optional[datetime] = None
 
-    async def __aenter__(self) -> "AnozrwayClient":
-        self._session = aiohttp.ClientSession(timeout=self.timeout)
-        return self
+        # spec recommends 1 req/sec
+        self._rate_limiter = AsyncLimiter(max_rate=1, time_period=1)
 
-    async def __aexit__(self, exc_type, exc, tb) -> None:
-        if self._session:
-            await self._session.close()
+    def log(self, message: str, level: str = "info") -> None:
+        if self.trigger:
+            self.trigger.log(message=message, level=level)
 
-    async def _get_token(self) -> str:
+    async def _get_access_token(self) -> str:
         if not self._session:
-            raise RuntimeError("ClientSession not initialized")
+            raise AnozrwayError("HTTP session not initialized")
 
-        async with self._session.post(
-            self.creds.token_url,
-            data={
-                "client_id": self.creds.client_id,
-                "client_secret": self.creds.client_secret,
-                "grant_type": "client_credentials",
-            },
-        ) as resp:
-            text = await resp.text()
-            if resp.status >= 400:
-                raise RuntimeError(f"OAuth2 token request failed: {resp.status} {text}")
+        if self._access_token and self._token_expires_at:
+            now = datetime.now(timezone.utc)
+            if now < self._token_expires_at:
+                return self._access_token
 
-            data = await resp.json()
-            token = data.get("access_token")
-            if not token:
-                raise RuntimeError(f"OAuth2 response missing access_token: {data}")
-            return token
+        if not self.client_id or not self.client_secret:
+            raise AnozrwayAuthError("Missing anozrway_client_id / anozrway_client_secret in module configuration")
 
-    async def _auth_header(self) -> Dict[str, str]:
-        if not self._token:
-            self._token = await self._get_token()
-        return {"authorization": f"Bearer {self._token}"}
+        data = {
+            "grant_type": "client_credentials",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+        }
 
-    async def domain_search(
+        async with self._rate_limiter:
+            async with self._session.post(
+                self.token_url,
+                data=data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=self.timeout,
+                raise_for_status=False,
+            ) as resp:
+                status = resp.status
+                text = await resp.text()
+
+                if status == 401:
+                    raise AnozrwayAuthError(f"Token exchange unauthorized: {text}")
+
+                if status != 200:
+                    raise AnozrwayError(f"Token request failed ({status}): {text}")
+
+                token_data = await resp.json()
+
+        token = token_data.get("access_token")
+        if not token:
+            raise AnozrwayError(f"OAuth2 response missing access_token: {token_data}")
+
+        expires_in = int(token_data.get("expires_in", 3600))
+        self._access_token = token
+        # refresh 5 min before
+        self._token_expires_at = datetime.now(timezone.utc) + timedelta(seconds=max(60, expires_in - 300))
+        return token
+
+    @staticmethod
+    def _to_iso(dt: datetime) -> str:
+        return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    async def search_domain_v1(
         self,
         context: str,
         domain: str,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        start_date: datetime,
+        end_date: datetime,
     ) -> List[Dict[str, Any]]:
-        """
-        POST {base_url}/v1/domain/searches
-        Returns: list of results (leaks)
-        """
         if not self._session:
-            raise RuntimeError("ClientSession not initialized")
+            raise AnozrwayError("HTTP session not initialized")
 
-        url = self.creds.base_url.rstrip("/") + "/v1/domain/searches"
-        payload: Dict[str, Any] = {"context": context, "domain": domain}
-        if start_date:
-            payload["start_date"] = start_date
-        if end_date:
-            payload["end_date"] = end_date
+        access_token = await self._get_access_token()
 
-        headers = {"Content-Type": "application/json"}
-        headers.update(await self._auth_header())
+        url = f"{self.base_url}/v1/domain/searches"
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {access_token}",
+        }
 
-        async with self._session.post(url, json=payload, headers=headers) as resp:
-            text = await resp.text()
-            if resp.status == 401:
-                # token might be expired/invalid -> refresh once
-                self._token = None
-                headers.update(await self._auth_header())
-                async with self._session.post(url, json=payload, headers=headers) as resp2:
-                    text2 = await resp2.text()
-                    if resp2.status >= 400:
-                        raise RuntimeError(f"Anozrway domain_search failed: {resp2.status} {text2}")
-                    data2 = await resp2.json()
-                    return data2.get("results", [])
+        # optional header (spec)
+        if self.x_restrict_access:
+            headers["x-restrict-access"] = str(self.x_restrict_access)
 
-            if resp.status >= 400:
-                raise RuntimeError(f"Anozrway domain_search failed: {resp.status} {text}")
+        payload: Dict[str, Any] = {
+            "context": context,
+            "domain": domain,
+            "start_date": self._to_iso(start_date),
+            "end_date": self._to_iso(end_date),
+        }
 
-            data = await resp.json()
-            return data.get("results", [])
+        max_attempts = 3
+        attempt = 0
+        backoff = 1
+
+        while attempt < max_attempts:
+            attempt += 1
+
+            async with self._rate_limiter:
+                async with self._session.post(
+                    url, json=payload, headers=headers, timeout=self.timeout, raise_for_status=False
+                ) as resp:
+                    status = resp.status
+
+                    if status == 401:
+                        # drop token and retry once
+                        self._access_token = None
+                        self._token_expires_at = None
+                        if attempt < max_attempts:
+                            continue
+                        raise AnozrwayAuthError("Unauthorized when calling Anozrway v1 domain search")
+
+                    if status == 429:
+                        # retry with simple backoff
+                        await asyncio.sleep(60 * backoff)
+                        backoff *= 2
+                        continue
+
+                    if status != 200:
+                        text = await resp.text()
+                        raise AnozrwayError(f"v1 domain search failed ({status}): {text}")
+
+                    data = await resp.json()
+
+            results = data.get("results") or []
+            if not isinstance(results, list):
+                return []
+            return results
+
+        raise AnozrwayRateLimitError("Exceeded maximum retry attempts while calling Anozrway v1 domain search")
+
+    async def __aenter__(self):
+        self._session = aiohttp.ClientSession(trust_env=True)
+        # validate token once
+        await self._get_access_token()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self._session:
+            await self._session.close()
+            self._session = None
