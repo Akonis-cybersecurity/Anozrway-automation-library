@@ -15,11 +15,13 @@
       },
       "start_date": {
         "description": "Start date (ISO 8601 UTC).",
-        "type": "string"
+        "type": "string",
+        "format": "date-time"
       },
       "end_date": {
         "description": "End date (ISO 8601 UTC).",
-        "type": "string"
+        "type": "string",
+        "format": "date-time"
       }
     },
     "required": ["domain"]
@@ -34,12 +36,109 @@
     "properties": {
       "count": {
         "description": "Number of results returned by the API.",
-        "type": "integer"
+        "type": "integer",
+        "minimum": 0
       },
       "results": {
-        "description": "List of leaks associated with the domain.",
+        "description": "List of leak/ransomware records associated with the domain.",
         "type": "array",
-        "items": { "type": "object" }
+        "items": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "email": {
+              "description": "Leaked email address.",
+              "type": "string",
+              "format": "email"
+            },
+            "other_email": {
+              "description": "Alternate email address found in the record.",
+              "type": "string"
+            },
+            "username": {
+              "description": "Username found in the record.",
+              "type": "string"
+            },
+            "password": {
+              "description": "Password found in the record (may be hashed/obfuscated).",
+              "type": "string"
+            },
+            "phone_number": {
+              "description": "Phone number found in the record.",
+              "type": "string"
+            },
+            "first_name": {
+              "description": "First name found in the record.",
+              "type": "string"
+            },
+            "last_name": {
+              "description": "Last name found in the record.",
+              "type": "string"
+            },
+            "full_name": {
+              "description": "Full name found in the record.",
+              "type": "string"
+            },
+            "company": {
+              "description": "Company found in the record.",
+              "type": "string"
+            },
+            "work": {
+              "description": "Job/Work information found in the record.",
+              "type": "string"
+            },
+            "city": {
+              "description": "City found in the record.",
+              "type": "string"
+            },
+            "country": {
+              "description": "Country found in the record.",
+              "type": "string"
+            },
+            "postal_code": {
+              "description": "Postal code found in the record.",
+              "type": "string"
+            },
+            "physical_address": {
+              "description": "Physical address found in the record.",
+              "type": "string"
+            },
+            "birthday": {
+              "description": "Birthday found in the record.",
+              "type": "string"
+            },
+            "source": {
+              "description": "Source information for the record.",
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "data": {
+                  "description": "List of data fields available in the record (e.g. email, password...).",
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "date": {
+                  "description": "Source date (ISO 8601 UTC).",
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "detection_date": {
+                  "description": "Detection date (ISO 8601 UTC).",
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "name": {
+                  "description": "Leak/ransomware source name (e.g. domain, breach name).",
+                  "type": "string"
+                },
+                "type": {
+                  "description": "Source type (e.g. RANSOMWARE, LEAK).",
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "required": ["count", "results"]
