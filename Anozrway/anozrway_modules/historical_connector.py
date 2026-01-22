@@ -192,20 +192,6 @@ class AnozrwayHistoricalConnector(AsyncConnector):
             return True
 
     # ---------------------------------------------------------------------
-    # Data minimization (PII)
-    # ---------------------------------------------------------------------
-    @staticmethod
-    def _sanitize_event(event: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Minimal sanitization:
-        - redact passwords if present
-        """
-        if "password" in event:
-            event = dict(event)  # copy
-            event["password"] = "***redacted***"
-        return event
-
-    # ---------------------------------------------------------------------
     # Main fetch
     # ---------------------------------------------------------------------
     async def fetch_events(self, client: AnozrwayClient) -> AsyncGenerator[List[Dict[str, Any]], None]:
@@ -260,25 +246,18 @@ class AnozrwayHistoricalConnector(AsyncConnector):
 
                 batch: List[Dict[str, Any]] = []
                 for ev in records:
-                    # enrich
-                    enriched = dict(ev)
-                    enriched["_searched_domain"] = domain
-                    enriched["_context"] = self.configuration.context
+                    if not isinstance(ev, dict):
+                        continue
 
-                    # sanitize
-                    enriched = self._sanitize_event(enriched)
-
-                    # dedup
-                    key = self._compute_dedup_key(domain, enriched)
+                    key = self._compute_dedup_key(domain, ev)
                     if not self._is_new_event(key):
                         continue
 
-                    # track checkpoint timestamp
-                    ev_ts = self._extract_event_ts(enriched)
+                    ev_ts = self._extract_event_ts(ev)
                     if ev_ts and ((max_seen_ts is None) or (ev_ts > max_seen_ts)):
                         max_seen_ts = ev_ts
 
-                    batch.append(enriched)
+                    batch.append(ev)
 
                     if len(batch) >= int(self.configuration.chunk_size):
                         yield batch
