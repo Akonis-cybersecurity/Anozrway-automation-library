@@ -1,7 +1,7 @@
 {
   "uuid": "e7a35a5a-2cda-4c8f-9c1a-2d27a5b9b65e",
-  "name": "Collect historical leaks from Anozrway (v1)",
-  "description": "Fetch IOC.h (historical) records from Anozrway v1 domain search API and forward to Sekoia intake.",
+  "name": "Collect historical leaks",
+  "description": "Fetch IOC.h (historical) records from Anozrway domain search API and forward to Sekoia intake.",
   "docker_parameters": "anozrway_historical",
   "arguments": {
     "$schema": "http://json-schema.org/draft-07/schema#",
