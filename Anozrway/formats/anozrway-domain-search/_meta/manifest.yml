@@ -1,5 +1,5 @@
 uuid: 53a68c97-7c19-45bb-8650-f4cd5762d016
-name: Anozrway Domain Search
+name: Domain Search
 slug: anozrway-domain-search
 description: "Events produced from Anozrway domain search endpoint. Contains leak/ransomware intelligence records related to monitored domains."
 data_sources:

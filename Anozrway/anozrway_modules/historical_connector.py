@@ -253,6 +253,11 @@ class AnozrwayHistoricalConnector(AsyncConnector):
                     if not self._is_new_event(key):
                         continue
 
+                    # Attach context for downstream parsing/intake routing.
+                    ev = dict(ev)
+                    ev["_searched_domain"] = domain
+                    ev["_context"] = self.configuration.context
+
                     ev_ts = self._extract_event_ts(ev)
                     if ev_ts and ((max_seen_ts is None) or (ev_ts > max_seen_ts)):
                         max_seen_ts = ev_ts
