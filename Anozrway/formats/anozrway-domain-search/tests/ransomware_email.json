@@ -1,0 +1,62 @@
+{
+  "input": {
+    "sekoiaio": {
+      "intake": {
+        "dialect": "Anozrway",
+        "dialect_uuid": "53a68c97-7c19-45bb-8650-f4cd5762d016"
+      }
+    },
+    "message": "{\"email\":\"mireille.desille-dugast@chu-rennes.fr\",\"source\":{\"data\":[\"email\"],\"date\":\"2026-01-06T09:25:03Z\",\"name\":\"euroqualitysystem.com\",\"type\":\"RANSOMWARE\",\"detection_date\":\"2026-01-06T09:25:03Z\"}}"
+  },
+  "expected": {
+    "message": "{\"email\":\"mireille.desille-dugast@chu-rennes.fr\",\"source\":{\"data\":[\"email\"],\"date\":\"2026-01-06T09:25:03Z\",\"name\":\"euroqualitysystem.com\",\"type\":\"RANSOMWARE\",\"detection_date\":\"2026-01-06T09:25:03Z\"}}",
+    "event": {
+      "action": "domain_search",
+      "category": [
+        "threat"
+      ],
+      "dataset": "anozrway.domain_search.v1",
+      "kind": "alert",
+      "message": "Anozrway RANSOMWARE record from euroqualitysystem.com",
+      "outcome": "success",
+      "provider": "anozrway",
+      "type": [
+        "indicator"
+      ]
+    },
+    "@timestamp": "2026-01-06T09:25:03Z",
+    "anozrway": {
+      "record": {
+        "email": "mireille.desille-dugast@chu-rennes.fr"
+      },
+      "source": {
+        "data": [
+          "email"
+        ],
+        "date": "2026-01-06T09:25:03Z",
+        "detection_date": "2026-01-06T09:25:03Z",
+        "name": "euroqualitysystem.com",
+        "type": "RANSOMWARE"
+      }
+    },
+    "email": {
+      "address": "mireille.desille-dugast@chu-rennes.fr"
+    },
+    "observer": {
+      "product": "Domain Search",
+      "type": "application",
+      "vendor": "Anozrway"
+    },
+    "related": {
+      "email": [
+        "mireille.desille-dugast@chu-rennes.fr"
+      ]
+    },
+    "threat": {
+      "indicator": {
+        "name": "mireille.desille-dugast@chu-rennes.fr",
+        "type": "email"
+      }
+    }
+  }
+}
