@@ -3,5 +3,5 @@ name: Anozrway Domain Search
 slug: anozrway-domain-search
 description: "Events produced from Anozrway domain search endpoint. Contains leak/ransomware intelligence records related to monitored domains."
 data_sources:
-  Threat intelligence: "Domain breach/leak intelligence records"
+  Third-party application logs: "Domain breach/leak intelligence records"
 automation_module_uuid: a07647cb-d88b-4c62-9012-72d5e50d26d2
