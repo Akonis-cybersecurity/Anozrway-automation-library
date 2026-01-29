@@ -1,4 +1,4 @@
-name: anozrway-domain-search
+name: anozrway
 
 pipeline:
   - name: parsed_event
@@ -84,7 +84,7 @@ stages:
   map_ecs_core:
     actions:
       - set:
-          email.address: "{{ parsed_event.message.email }}"
+          user.email: "{{ parsed_event.message.email }}"
         filter: "{{ parsed_event.message.email is defined }}"
 
       - set:
@@ -100,23 +100,23 @@ stages:
         filter: "{{ parsed_event.message.company is defined }}"
 
       - set:
-          geo.city_name: "{{ parsed_event.message.city }}"
+          source.geo.city_name: "{{ parsed_event.message.city }}"
         filter: "{{ parsed_event.message.city is defined }}"
 
       - set:
-          geo.country_name: "{{ parsed_event.message.country }}"
+          source.geo.country_name: "{{ parsed_event.message.country }}"
         filter: "{{ parsed_event.message.country is defined }}"
 
       - set:
-          threat.indicator.type: "email"
-          threat.indicator.name: "{{ parsed_event.message.email }}"
+          threat.indicator.type: "email-addr"
+          threat.indicator.email.address: "{{ parsed_event.message.email }}"
         filter: "{{ parsed_event.message.email is defined }}"
 
   ecs_categorization:
     actions:
       - set:
           event.provider: "anozrway"
-          event.dataset: "anozrway.domain_search.v1"
+          event.dataset: "anozrway.domain_search"
           event.action: "domain_search"
           event.kind: "event"
           event.category: "{{ (final.event.category | default([])) + ['threat'] }}"
@@ -126,7 +126,7 @@ stages:
         filter: "{{ final.anozrway.source.type == 'RANSOMWARE' }}"
 
       - set:
-          event.type: "{{ (final.event.type | default([])) + ['indicator'] }}"
+          event.type: "{{ (final.event.type | default([])) + ['info'] }}"
         filter: "{{ final.anozrway.source.type == 'RANSOMWARE' }}"
 
       - set:
@@ -137,9 +137,6 @@ stages:
           event.message: "Anozrway {{ final.anozrway.source.type }} record from {{ final.anozrway.source.name }}"
         filter: "{{ final.anozrway.source.type is defined and final.anozrway.source.name is defined }}"
 
-      - set:
-          event.outcome: "success"
-        filter: "{{ final.event.outcome is not defined }}"
 
   set_related:
     actions:

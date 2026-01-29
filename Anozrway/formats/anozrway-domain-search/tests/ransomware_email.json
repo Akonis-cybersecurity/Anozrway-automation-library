@@ -15,13 +15,12 @@
       "category": [
         "threat"
       ],
-      "dataset": "anozrway.domain_search.v1",
+      "dataset": "anozrway.domain_search",
       "kind": "alert",
       "message": "Anozrway RANSOMWARE record from euroqualitysystem.com",
-      "outcome": "success",
       "provider": "anozrway",
       "type": [
-        "indicator"
+        "info"
       ]
     },
     "@timestamp": "2026-01-06T09:25:03Z",
@@ -39,9 +38,6 @@
         "type": "RANSOMWARE"
       }
     },
-    "email": {
-      "address": "mireille.desille-dugast@chu-rennes.fr"
-    },
     "observer": {
       "product": "Domain Search",
       "type": "application",
@@ -54,9 +50,14 @@
     },
     "threat": {
       "indicator": {
-        "name": "mireille.desille-dugast@chu-rennes.fr",
-        "type": "email"
+        "email": {
+          "address": "mireille.desille-dugast@chu-rennes.fr"
+        },
+        "type": "email-addr"
       }
+    },
+    "user": {
+      "email": "mireille.desille-dugast@chu-rennes.fr"
     }
   }
 }

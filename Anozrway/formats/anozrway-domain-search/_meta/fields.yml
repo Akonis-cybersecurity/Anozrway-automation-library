@@ -78,21 +78,6 @@ anozrway.record.postal_code:
   name: anozrway.record.postal_code
   type: keyword
 
-email.address:
-  description: "Email address."
-  name: email.address
-  type: keyword
-
-geo.city_name:
-  description: "Name of the city."
-  name: geo.city_name
-  type: keyword
-
-geo.country_name:
-  description: "Name of the country."
-  name: geo.country_name
-  type: keyword
-
 related.email:
   description: "Related email addresses."
   name: related.email
