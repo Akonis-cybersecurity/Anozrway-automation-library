@@ -23,7 +23,7 @@ from anozrway_modules.metrics import (
 
 
 class AnozrwayHistoricalConfiguration(DefaultConnectorConfiguration):
-    """Connector-specific configuration (Anozrway v1 historical)"""
+    """Connector-specific configuration (Anozrway Balise Pipeline)"""
 
     intake_server: Optional[str] = None
     intake_key: str = ""
@@ -39,8 +39,8 @@ class AnozrwayHistoricalConfiguration(DefaultConnectorConfiguration):
 
 class AnozrwayHistoricalConnector(AsyncConnector):
     """
-    Connector to fetch historical records from Anozrway v1 domain search endpoint
-    and forward results to Sekoia intake.
+    Connector to fetch leak detection events from the Anozrway Balise Pipeline
+    and forward them to Sekoia intake.
     """
 
     name = "AnozrwayHistorical"
@@ -69,7 +69,7 @@ class AnozrwayHistoricalConnector(AsyncConnector):
         return [d.strip() for d in raw.split(",") if d.strip()]
 
     # ---------------------------------------------------------------------
-    # Checkpoint management (based on source.detection_date / source.date)
+    # Checkpoint management (based on event timestamp / last_updated)
     # ---------------------------------------------------------------------
     def last_checkpoint(self) -> datetime:
         """
@@ -122,19 +122,13 @@ class AnozrwayHistoricalConnector(AsyncConnector):
             return ""
         return str(x)
 
-    @staticmethod
-    def _get_source(event: Dict[str, Any]) -> Dict[str, Any]:
-        src = event.get("source")
-        return src if isinstance(src, dict) else {}
-
     @classmethod
     def _extract_event_ts(cls, event: Dict[str, Any]) -> Optional[datetime]:
         """
-        Extract a stable event timestamp from the record.
-        Priority: source.detection_date -> source.date.
+        Extract a stable event timestamp from a Balise Pipeline event.
+        Priority: timestamp -> last_updated.
         """
-        src = cls._get_source(event)
-        ts = src.get("detection_date") or src.get("date")
+        ts = event.get("timestamp") or event.get("last_updated")
         if not ts:
             return None
         try:
@@ -145,36 +139,24 @@ class AnozrwayHistoricalConnector(AsyncConnector):
     @classmethod
     def _extract_entity_id(cls, event: Dict[str, Any]) -> str:
         """
-        Pick the most stable identifier available in the record.
+        Pick the most stable identifier for a Balise Pipeline event.
         """
-        for k in ("email", "username", "other_email", "full_name", "phone_number"):
-            v = event.get(k)
-            if v:
-                return cls._safe_str(v).strip().lower()
-        # fallback: a deterministic string from a subset of keys
-        return ""
+        return cls._safe_str(event.get("nom_fuite")).strip().lower()
 
     @classmethod
     def _compute_dedup_key(cls, searched_domain: str, event: Dict[str, Any]) -> str:
         """
-        Build a stable dedup key.
-        We include searched_domain + entity_id + source.name + event_ts + source.type
-        and hash it to keep it short.
+        Build a stable dedup key for Balise Pipeline events.
+        Based on: searched_domain + nom_fuite + timestamp.
         """
-        src = cls._get_source(event)
-        src_name = cls._safe_str(src.get("name")).strip().lower()
-        src_type = cls._safe_str(src.get("type")).strip().lower()
-
-        entity_id = cls._extract_entity_id(event)
+        nom_fuite = cls._safe_str(event.get("nom_fuite")).strip().lower()
         ts = cls._extract_event_ts(event)
         ts_s = ts.isoformat().replace("+00:00", "Z") if ts else ""
 
         raw = "|".join(
             [
                 searched_domain.strip().lower(),
-                entity_id,
-                src_name,
-                src_type,
+                nom_fuite,
                 ts_s,
             ]
         )
@@ -221,7 +203,7 @@ class AnozrwayHistoricalConnector(AsyncConnector):
                 t0 = datetime.now().timestamp()
                 status: Any = "error"
                 try:
-                    records = await client.search_domain_v1(
+                    records = await client.fetch_events(
                         context=self.configuration.context,
                         domain=domain,
                         start_date=current,
@@ -230,14 +212,14 @@ class AnozrwayHistoricalConnector(AsyncConnector):
                     status = 200
                 except Exception as e:
                     status = getattr(e, "status", None) or "error"
-                    api_requests.labels(endpoint="v1/domain/searches", status_code=str(status)).inc()
-                    self.log_exception(e, message=f"Error while fetching v1 records for domain={domain}")
+                    api_requests.labels(endpoint="events", status_code=str(status)).inc()
+                    self.log_exception(e, message=f"Error while fetching Balise events for domain={domain}")
                     continue
                 finally:
                     dt = datetime.now().timestamp() - t0
-                    api_request_duration.labels(endpoint="v1/domain/searches").observe(dt)
+                    api_request_duration.labels(endpoint="events").observe(dt)
 
-                api_requests.labels(endpoint="v1/domain/searches", status_code=str(status)).inc()
+                api_requests.labels(endpoint="events", status_code=str(status)).inc()
 
                 if not records:
                     continue
@@ -257,6 +239,20 @@ class AnozrwayHistoricalConnector(AsyncConnector):
                     ev = dict(ev)
                     ev["_searched_domain"] = domain
                     ev["_context"] = self.configuration.context
+
+                    # Normalize download links if they come quoted.
+                    dl = ev.get("download_links")
+                    if isinstance(dl, list):
+                        cleaned: List[Any] = []
+                        for item in dl:
+                            if isinstance(item, str):
+                                s = item.strip()
+                                if s.startswith('"') and s.endswith('"') and len(s) >= 2:
+                                    s = s[1:-1]
+                                cleaned.append(s)
+                            else:
+                                cleaned.append(item)
+                        ev["download_links"] = cleaned
 
                     ev_ts = self._extract_event_ts(ev)
                     if ev_ts and ((max_seen_ts is None) or (ev_ts > max_seen_ts)):

@@ -1,0 +1,55 @@
+{
+  "input": {
+    "sekoiaio": {
+      "intake": {
+        "dialect": "Anozrway Balise Pipeline",
+        "dialect_uuid": "3474f47d-b731-4012-9b95-b910e7f3a635"
+      }
+    },
+    "message": "{\"version\":\"1.0.0\",\"nom_fuite\":\"partial-leak-2025\",\"timestamp\":\"2025-11-15T14:30:00Z\",\"status\":\"running\",\"download_links\":[],\"last_updated\":\"2025-11-15T15:00:00Z\",\"downloaded_files_count\":0,\"watermarked_count\":null,\"rule_matched_count\":null,\"uploaded_files\":[],\"_searched_domain\":\"example.org\",\"_context\":\"demo\"}"
+  },
+  "expected": {
+    "message": "{\"version\":\"1.0.0\",\"nom_fuite\":\"partial-leak-2025\",\"timestamp\":\"2025-11-15T14:30:00Z\",\"status\":\"running\",\"download_links\":[],\"last_updated\":\"2025-11-15T15:00:00Z\",\"downloaded_files_count\":0,\"watermarked_count\":null,\"rule_matched_count\":null,\"uploaded_files\":[],\"_searched_domain\":\"example.org\",\"_context\":\"demo\"}",
+    "@timestamp": "2025-11-15T14:30:00.000000Z",
+    "event": {
+      "action": "leak-detected",
+      "category": [
+        "threat"
+      ],
+      "dataset": "anozrway.balise_pipeline",
+      "kind": "alert",
+      "message": "Anozrway Balise Pipeline leak detected: partial-leak-2025",
+      "outcome": "unknown",
+      "provider": "anozrway",
+      "reason": "partial-leak-2025",
+      "type": [
+        "info"
+      ]
+    },
+    "observer": {
+      "product": "Balise Pipeline",
+      "type": "application",
+      "vendor": "Anozrway"
+    },
+    "anozrway": {
+      "balise": {
+        "nom_fuite": "partial-leak-2025",
+        "version": "1.0.0",
+        "status": "running",
+        "downloaded_files_count": 0,
+        "download_links": [],
+        "uploaded_files": [],
+        "context": "demo",
+        "searched_domain": "example.org"
+      }
+    },
+    "threat": {
+      "indicator": {
+        "first_seen": "2025-11-15T14:30:00Z",
+        "modified_at": "2025-11-15T15:00:00Z",
+        "name": "partial-leak-2025",
+        "description": "Data leak: partial-leak-2025"
+      }
+    }
+  }
+}

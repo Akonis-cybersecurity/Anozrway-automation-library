@@ -63,6 +63,17 @@ def test_last_checkpoint_from_context(connector):
     assert result == datetime(2024, 1, 1, tzinfo=timezone.utc)
 
 
+def test_last_checkpoint_invalid_context_fallback(connector):
+    with connector.context_store as c:
+        c["last_checkpoint"] = "not-a-date"
+
+    before = datetime.now(timezone.utc) - timedelta(days=1, seconds=5)
+    result = connector.last_checkpoint()
+    after = datetime.now(timezone.utc)
+
+    assert before <= result <= after
+
+
 def test_save_checkpoint_sets_context(monkeypatch, connector):
     gauge = MagicMock()
     monkeypatch.setattr("anozrway_modules.historical_connector.checkpoint_age", gauge)
@@ -99,8 +110,8 @@ def test_is_new_event_and_duplicate(monkeypatch, connector):
     monkeypatch.setattr("anozrway_modules.historical_connector.events_duplicated", duplicated)
 
     event = {
-        "email": "user@example.com",
-        "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+        "nom_fuite": "company-breach-2025",
+        "timestamp": "2024-01-01T00:00:00Z",
     }
     key = connector._compute_dedup_key("example.com", event)
     assert connector._is_new_event(key) is True
@@ -110,13 +121,46 @@ def test_is_new_event_and_duplicate(monkeypatch, connector):
 
 def test_extract_event_ts_priority(connector):
     event = {
-        "source": {
-            "detection_date": "2024-01-02T00:00:00Z",
-            "date": "2024-01-01T00:00:00Z",
-        }
+        "timestamp": "2024-01-02T00:00:00Z",
+        "last_updated": "2024-01-01T00:00:00Z",
     }
     ts = connector._extract_event_ts(event)
     assert ts == datetime(2024, 1, 2, tzinfo=timezone.utc)
+
+
+def test_extract_event_ts_fallback_to_last_updated(connector):
+    event = {"last_updated": "2024-01-01T00:00:00Z"}
+    ts = connector._extract_event_ts(event)
+    assert ts == datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+
+def test_extract_event_ts_missing(connector):
+    event = {"nom_fuite": "leak"}
+    ts = connector._extract_event_ts(event)
+    assert ts is None
+
+
+def test_extract_entity_id_normalizes(connector):
+    event = {"nom_fuite": "  Leak-X  "}
+    assert connector._extract_entity_id(event) == "leak-x"
+
+
+def test_safe_str_none(connector):
+    assert connector._safe_str(None) == ""
+
+
+def test_compute_dedup_key_deterministic(connector):
+    event = {"nom_fuite": "leak-x", "timestamp": "2024-01-01T00:00:00Z"}
+    key1 = connector._compute_dedup_key("example.com", event)
+    key2 = connector._compute_dedup_key("example.com", event)
+    assert key1 == key2
+
+
+def test_compute_dedup_key_different_domains(connector):
+    event = {"nom_fuite": "leak-x", "timestamp": "2024-01-01T00:00:00Z"}
+    key1 = connector._compute_dedup_key("example.com", event)
+    key2 = connector._compute_dedup_key("other.com", event)
+    assert key1 != key2
 
 
 def test_fetch_events_no_domains(connector):
@@ -155,16 +199,18 @@ def test_fetch_events_batches_and_checkpoint(connector):
 
     records = [
         {
-            "email": "a@example.com",
-            "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+            "nom_fuite": "leak-a",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "status": "finished",
         },
         {
-            "email": "b@example.com",
-            "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:01Z"},
+            "nom_fuite": "leak-b",
+            "timestamp": "2024-01-01T00:00:01Z",
+            "status": "finished",
         },
     ]
     client = MagicMock()
-    client.search_domain_v1 = AsyncMock(side_effect=[records, []])
+    client.fetch_events = AsyncMock(side_effect=[records, []])
 
     async def collect():
         return [batch async for batch in connector.fetch_events(client)]
@@ -174,22 +220,24 @@ def test_fetch_events_batches_and_checkpoint(connector):
     assert results == [
         [
             {
-                "email": "a@example.com",
-                "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+                "nom_fuite": "leak-a",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "status": "finished",
                 "_searched_domain": "example.com",
                 "_context": "demo",
             }
         ],
         [
             {
-                "email": "b@example.com",
-                "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:01Z"},
+                "nom_fuite": "leak-b",
+                "timestamp": "2024-01-01T00:00:01Z",
+                "status": "finished",
                 "_searched_domain": "example.com",
                 "_context": "demo",
             }
         ],
     ]
-    assert client.search_domain_v1.call_count == 2
+    assert client.fetch_events.call_count == 2
 
     with connector.context_store as c:
         assert "last_checkpoint" in c
@@ -204,13 +252,14 @@ def test_fetch_events_continues_on_error(connector):
     connector.configuration.chunk_size = 10
 
     client = MagicMock()
-    client.search_domain_v1 = AsyncMock(
+    client.fetch_events = AsyncMock(
         side_effect=[
             RuntimeError("boom"),
             [
                 {
-                    "email": "ok@example.com",
-                    "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+                    "nom_fuite": "ok-leak",
+                    "timestamp": "2024-01-01T00:00:00Z",
+                    "status": "finished",
                 }
             ],
         ]
@@ -224,8 +273,9 @@ def test_fetch_events_continues_on_error(connector):
     assert results == [
         [
             {
-                "email": "ok@example.com",
-                "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+                "nom_fuite": "ok-leak",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "status": "finished",
                 "_searched_domain": "ok.com",
                 "_context": "demo",
             }
@@ -241,7 +291,7 @@ def test_fetch_events_empty_records_no_checkpoint(connector):
 
     connector.configuration.domains = "example.com"
     client = MagicMock()
-    client.search_domain_v1 = AsyncMock(return_value=[])
+    client.fetch_events = AsyncMock(return_value=[])
     connector.save_checkpoint = MagicMock()
 
     async def collect():
@@ -262,11 +312,12 @@ def test_fetch_events_invalid_added_date(connector):
     connector.configuration.chunk_size = 10
 
     client = MagicMock()
-    client.search_domain_v1 = AsyncMock(
+    client.fetch_events = AsyncMock(
         return_value=[
             {
-                "email": "bad@example.com",
-                "source": {"name": "leak", "type": "db", "detection_date": "not-a-date"},
+                "nom_fuite": "bad-leak",
+                "timestamp": "not-a-date",
+                "status": "finished",
             },
         ]
     )
@@ -279,8 +330,9 @@ def test_fetch_events_invalid_added_date(connector):
     assert results == [
         [
             {
-                "email": "bad@example.com",
-                "source": {"name": "leak", "type": "db", "detection_date": "not-a-date"},
+                "nom_fuite": "bad-leak",
+                "timestamp": "not-a-date",
+                "status": "finished",
                 "_searched_domain": "example.com",
                 "_context": "demo",
             }
@@ -298,16 +350,18 @@ def test_fetch_events_same_added_date_no_max_update(connector):
 
     records = [
         {
-            "email": "a@example.com",
-            "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+            "nom_fuite": "leak-a",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "status": "finished",
         },
         {
-            "email": "b@example.com",
-            "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+            "nom_fuite": "leak-b",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "status": "finished",
         },
     ]
     client = MagicMock()
-    client.search_domain_v1 = AsyncMock(return_value=records)
+    client.fetch_events = AsyncMock(return_value=records)
 
     async def collect():
         return [batch async for batch in connector.fetch_events(client)]
@@ -317,17 +371,99 @@ def test_fetch_events_same_added_date_no_max_update(connector):
     assert results == [
         [
             {
-                "email": "a@example.com",
-                "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+                "nom_fuite": "leak-a",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "status": "finished",
                 "_searched_domain": "example.com",
                 "_context": "demo",
             },
             {
-                "email": "b@example.com",
-                "source": {"name": "leak", "type": "db", "detection_date": "2024-01-01T00:00:00Z"},
+                "nom_fuite": "leak-b",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "status": "finished",
                 "_searched_domain": "example.com",
                 "_context": "demo",
             },
+        ]
+    ]
+
+
+def test_fetch_events_skips_non_dict_and_duplicates(connector):
+    start = datetime.now(timezone.utc) - timedelta(minutes=10)
+    with connector.context_store as c:
+        c["last_checkpoint"] = start.isoformat().replace("+00:00", "Z")
+
+    connector.configuration.domains = "example.com"
+    connector.configuration.chunk_size = 10
+
+    records = [
+        "not-a-dict",
+        {
+            "nom_fuite": "leak-a",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "status": "finished",
+        },
+        {
+            "nom_fuite": "leak-a",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "status": "finished",
+        },
+    ]
+    client = MagicMock()
+    client.fetch_events = AsyncMock(return_value=records)
+
+    async def collect():
+        return [batch async for batch in connector.fetch_events(client)]
+
+    results = asyncio.run(collect())
+
+    assert results == [
+        [
+            {
+                "nom_fuite": "leak-a",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "status": "finished",
+                "_searched_domain": "example.com",
+                "_context": "demo",
+            }
+        ]
+    ]
+
+
+def test_fetch_events_normalizes_download_links(connector):
+    start = datetime.now(timezone.utc) - timedelta(minutes=10)
+    with connector.context_store as c:
+        c["last_checkpoint"] = start.isoformat().replace("+00:00", "Z")
+
+    connector.configuration.domains = "example.com"
+    connector.configuration.chunk_size = 10
+
+    records = [
+        {
+            "nom_fuite": "leak-a",
+            "timestamp": "2024-01-01T00:00:00Z",
+            "status": "finished",
+            "download_links": ['"http://example.com/a"', "http://example.com/b", 123],
+        },
+    ]
+    client = MagicMock()
+    client.fetch_events = AsyncMock(return_value=records)
+
+    async def collect():
+        return [batch async for batch in connector.fetch_events(client)]
+
+    results = asyncio.run(collect())
+
+    assert results == [
+        [
+            {
+                "nom_fuite": "leak-a",
+                "timestamp": "2024-01-01T00:00:00Z",
+                "status": "finished",
+                "download_links": ["http://example.com/a", "http://example.com/b", 123],
+                "_searched_domain": "example.com",
+                "_context": "demo",
+            }
         ]
     ]
 

@@ -1,7 +1,7 @@
 {
   "uuid": "e7a35a5a-2cda-4c8f-9c1a-2d27a5b9b65e",
-  "name": "Anozrway Domain Search",
-  "description": "Fetch historical records from the Anozrway domain search API and forward them to the Sekoia intake.",
+  "name": "Anozrway Balise Pipeline",
+  "description": "Fetch leak detection events from the Anozrway Balise Pipeline API and forward them to the Sekoia intake.",
   "docker_parameters": "anozrway_historical",
   "arguments": {
     "$schema": "http://json-schema.org/draft-07/schema#",
