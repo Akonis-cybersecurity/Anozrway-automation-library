@@ -28,16 +28,12 @@ stages:
     actions:
       # 1) Primary: timestamp
       - set:
-          "@timestamp": >-
-            {%- set ts = parsed_event.message.timestamp -%}
-            {{ ts if '.' in ts else ts.replace('Z', '.000000Z') }}
+          "@timestamp": "{{ parsed_event.message.timestamp if '.' in parsed_event.message.timestamp else parsed_event.message.timestamp.replace('Z', '.000000Z') }}"
         filter: "{{ parsed_event.message.timestamp is defined }}"
 
       # 2) Fallback: last_updated
       - set:
-          "@timestamp": >-
-            {%- set ts = parsed_event.message.last_updated -%}
-            {{ ts if '.' in ts else ts.replace('Z', '.000000Z') }}
+          "@timestamp": "{{ parsed_event.message.last_updated if '.' in parsed_event.message.last_updated else parsed_event.message.last_updated.replace('Z', '.000000Z') }}"
         filter: >-
           {{ parsed_event.message.timestamp is not defined and
              parsed_event.message.last_updated is defined }}
@@ -114,7 +110,7 @@ stages:
              parsed_event.message.status not in ['finished', 'failed'] }}
 
       - set:
-          event.message: "leak detected: {{ parsed_event.message.nom_fuite }}"
+          event.message: "Anozrway Balise Pipeline leak detected: {{ parsed_event.message.nom_fuite }}"
         filter: "{{ parsed_event.message.nom_fuite is defined }}"
 
   set_threat_indicator:

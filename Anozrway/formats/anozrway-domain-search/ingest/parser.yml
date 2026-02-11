@@ -134,7 +134,7 @@ stages:
         filter: "{{ final.anozrway.source.type == 'LEAK' }}"
 
       - set:
-          event.message: "{{ final.anozrway.source.type }} record from {{ final.anozrway.source.name }}"
+          event.message: "Anozrway {{ final.anozrway.source.type }} record from {{ final.anozrway.source.name }}"
         filter: "{{ final.anozrway.source.type is defined and final.anozrway.source.name is defined }}"
 
 

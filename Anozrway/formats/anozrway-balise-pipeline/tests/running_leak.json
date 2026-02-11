@@ -10,7 +10,7 @@
   },
   "expected": {
     "message": "{\"version\":\"1.0.0\",\"nom_fuite\":\"partial-leak-2025\",\"timestamp\":\"2025-11-15T14:30:00Z\",\"status\":\"running\",\"download_links\":[],\"last_updated\":\"2025-11-15T15:00:00Z\",\"downloaded_files_count\":0,\"watermarked_count\":null,\"rule_matched_count\":null,\"uploaded_files\":[],\"_searched_domain\":\"example.org\",\"_context\":\"demo\"}",
-    "@timestamp": "2025-11-15T14:30:00.000000Z",
+    "@timestamp": "2025-11-15T14:30:00Z",
     "event": {
       "action": "leak-detected",
       "category": [
