@@ -86,6 +86,75 @@ class AnozrwayClient:
     def _to_iso(dt: datetime) -> str:
         return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
+    async def search_domain_v1(
+        self,
+        context: str,
+        domain: str,
+        start_date: datetime,
+        end_date: datetime,
+    ) -> List[Dict[str, Any]]:
+        if not self._session:
+            raise AnozrwayError("HTTP session not initialized")
+
+        access_token = await self._get_access_token()
+
+        url = f"{self.base_url}/v1/domain/searches"
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {access_token}",
+        }
+
+        # optional header (spec)
+        if self.x_restrict_access:
+            headers["x-restrict-access"] = str(self.x_restrict_access)
+
+        payload: Dict[str, Any] = {
+            "context": context,
+            "domain": domain,
+            "start_date": self._to_iso(start_date),
+            "end_date": self._to_iso(end_date),
+        }
+
+        max_attempts = 3
+        attempt = 0
+        backoff = 1
+
+        while attempt < max_attempts:
+            attempt += 1
+
+            async with self._rate_limiter:
+                async with self._session.post(
+                    url, json=payload, headers=headers, timeout=self.timeout, raise_for_status=False
+                ) as resp:
+                    status = resp.status
+
+                    if status == 401:
+                        # drop token and retry once
+                        self._access_token = None
+                        self._token_expires_at = None
+                        if attempt < max_attempts:
+                            continue
+                        raise AnozrwayAuthError("Unauthorized when calling Anozrway v1 domain search")
+
+                    if status == 429:
+                        # retry with simple backoff
+                        await asyncio.sleep(60 * backoff)
+                        backoff *= 2
+                        continue
+
+                    if status != 200:
+                        text = await resp.text()
+                        raise AnozrwayError(f"v1 domain search failed ({status}): {text}")
+
+                    data = await resp.json()
+
+            results = data.get("results") or []
+            if not isinstance(results, list):
+                return []
+            return results
+
+        raise AnozrwayRateLimitError("Exceeded maximum retry attempts while calling Anozrway v1 domain search")
+
     async def fetch_events(
         self,
         context: str,
