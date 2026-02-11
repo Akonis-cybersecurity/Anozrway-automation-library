@@ -1,13 +1,13 @@
 [
   {
-    "value": "Balise Pipeline: leak '{anozrway.balise.nom_fuite}' detected ({anozrway.balise.status})",
+    "value": "Leak '{anozrway.balise.nom_fuite}' detected ({anozrway.balise.status})",
     "conditions": [
       { "field": "anozrway.balise.nom_fuite" },
       { "field": "anozrway.balise.status" }
     ]
   },
   {
-    "value": "Balise Pipeline: {anozrway.balise.rule_matched_count} rules matched on '{anozrway.balise.nom_fuite}'",
+    "value": "{anozrway.balise.rule_matched_count} rules matched on '{anozrway.balise.nom_fuite}'",
     "conditions": [
       { "field": "anozrway.balise.nom_fuite" },
       { "field": "anozrway.balise.rule_matched_count" }

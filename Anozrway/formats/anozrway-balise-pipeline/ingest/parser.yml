@@ -114,7 +114,7 @@ stages:
              parsed_event.message.status not in ['finished', 'failed'] }}
 
       - set:
-          event.message: "Anozrway Balise Pipeline leak detected: {{ parsed_event.message.nom_fuite }}"
+          event.message: "leak detected: {{ parsed_event.message.nom_fuite }}"
         filter: "{{ parsed_event.message.nom_fuite is defined }}"
 
   set_threat_indicator:
