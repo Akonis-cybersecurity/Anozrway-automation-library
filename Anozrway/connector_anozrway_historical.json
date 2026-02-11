@@ -1,6 +1,6 @@
 {
   "uuid": "e7a35a5a-2cda-4c8f-9c1a-2d27a5b9b65e",
-  "name": "Anozrway Balise Pipeline",
+  "name": "Collect Anozrway Domain Events",
   "description": "Fetch leak detection events from the Anozrway Balise Pipeline API and forward them to the Sekoia intake.",
   "docker_parameters": "anozrway_historical",
   "arguments": {
